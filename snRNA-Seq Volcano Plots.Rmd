@@ -1,0 +1,304 @@
+---
+title: "snRNA-Seq Volcano Plots"
+output: html_notebook
+---
+After running DESeq2/edgeR, first we will remove rows that have NAs.
+```{r}
+library(ggplot2)
+library(ggrepel)
+library(ggbreak)
+library(dplyr)
+library(tidyr)
+
+DE_female_aging <- DE_female_aging %>% drop_na()
+DE_male_aging <- DE_male_aging %>% drop_na()
+DE_male_treatment <- DE_male_treatment %>% drop_na()
+```
+Next, we will create two rows to each data frame that will indicate whether
+genes are significantly upregulated or downregulated. 
+```{r}
+DE_female_aging$DiffExpressed <- "NO"
+DE_female_aging$DiffExpressed[DE_female_aging$avg_logFC > 0.25 & 
+                                DE_female_aging$p_val_adj < 0.05] <- "UP"
+DE_female_aging$DiffExpressed[DE_female_aging$avg_logFC < -0.25 & 
+                                DE_female_aging$p_val_adj < 0.05] <- "DOWN"
+DE_male_aging$DiffExpressed <- "NO"
+DE_male_aging$DiffExpressed[DE_male_aging$avg_logFC > 0.25 & 
+                                DE_male_aging$p_val_adj < 0.05] <- "UP"
+DE_male_aging$DiffExpressed[DE_male_aging$avg_logFC < -0.25 & 
+                                DE_male_aging$p_val_adj < 0.05] <- "DOWN"
+DE_male_treatment$DiffExpressed <- "NO"
+DE_male_treatment$DiffExpressed[DE_male_treatment$avg_logFC > 0.25 & 
+                                DE_male_treatment$p_val_adj < 0.05] <- "UP"
+DE_male_treatment$DiffExpressed[DE_male_treatment$avg_logFC < -0.25 & 
+                                DE_male_treatment$p_val_adj < 0.05] <- "DOWN"
+```
+Volcano plots will then be created for astrocytes, microglia, and 
+oligodendrocytes using the following code. Astrocytes below:
+``` {r}
+female_aging_astrocytes_top10 <- head(arrange(DE_female_aging
+                                              [which(DE_female_aging$cell_type 
+                                              == "Astrocytes"), ], 
+                                              p_val_adj), 2) 
+DE_female_aging$Label <- if_else(DE_female_aging$gene %in% 
+                                female_aging_astrocytes_top10$gene, 
+                                DE_female_aging$gene, NA)
+FemaleAging_Astrocytes <- ggplot(data = DE_female_aging
+                      [which(DE_female_aging$cell_type == "Astrocytes"), ], 
+                      aes(x = avg_logFC, y = -log10(p_val_adj), 
+                          col = DiffExpressed, label = Label)) +
+  scale_color_manual(values=c("blue", "black", "red")) +
+  geom_vline(xintercept=c(-0.25, 0.25), col="red") +
+  geom_hline(yintercept=-log10(0.05), col="red") +
+  labs(x=expression(Log[2]~Fold~Change)) + 
+  labs(y=expression(-Log[10](p~Value))) + 
+  xlim(-7.5, 7.5) + ylim(0, 8) +
+  geom_point() +
+  geom_text_repel() +
+  ggtitle("Female - Astrocytes") +
+  theme_classic() +
+  theme(legend.position = "none")
+DE_female_aging$Label <- NA
+rm(female_aging_astrocytes_top10)
+
+male_aging_astrocytes_top10 <- head(arrange(DE_male_aging
+                                              [which(DE_male_aging$cell_type 
+                                              == "Astrocytes"), ], 
+                                              p_val_adj), 10) 
+DE_male_aging$Label <- if_else(DE_male_aging$gene %in% 
+                                male_aging_astrocytes_top10$gene, 
+                                DE_male_aging$gene, NA)
+MaleAging_Astrocytes <- ggplot(data = DE_male_aging
+                    [which(DE_male_aging$cell_type == "Astrocytes"), ], 
+                      aes(x = avg_logFC, y = -log10(p_val_adj), 
+                          col = DiffExpressed, label = Label)) +
+  scale_color_manual(values=c("blue", "black", "red")) +
+  geom_vline(xintercept=c(-0.25, 0.25), col="red") +
+  geom_hline(yintercept=-log10(0.05), col="red") +
+  labs(x=expression(Log[2]~Fold~Change)) + 
+  labs(y=expression(-Log[10](p~Value))) + 
+  xlim(-7.5, 7.5) + ylim(0, 8) +
+  geom_point() +
+  geom_text_repel() +
+  ggtitle("Male - Astrocytes") +
+  theme_classic() +
+  theme(legend.position = "none")
+DE_male_aging$Label <- NA
+rm(male_aging_astrocytes_top10)
+
+male_treatment_astrocytes_top10 <- head(arrange(DE_male_treatment
+                                              [which(DE_male_treatment$cell_type 
+                                              == "Astrocytes"), ], 
+                                              p_val_adj), 10) 
+DE_male_treatment$Label <- if_else(DE_male_treatment$gene %in% 
+                                male_treatment_astrocytes_top10$gene, 
+                                DE_male_treatment$gene, NA)
+MaleTreatment_Astrocytes <- ggplot(data = DE_male_treatment
+                    [which(DE_male_treatment$cell_type == "Astrocytes"), ], 
+                      aes(x = avg_logFC, y = -log10(p_val_adj), 
+                          col = DiffExpressed, label = Label)) +
+  scale_color_manual(values=c("blue", "black", "red")) +
+  geom_vline(xintercept=c(-0.25, 0.25), col="red") +
+  geom_hline(yintercept=-log10(0.05), col="red") +
+  labs(x=expression(Log[2]~Fold~Change)) + 
+  labs(y=expression(-Log[10](p~Value))) + 
+  xlim(-7.5, 7.5) + ylim(0, 8) +
+  geom_point() +
+  geom_text_repel() +
+  ggtitle("Male M. vaccae - Astrocytes") +
+  theme_classic() +
+  theme(legend.position = "none")
+DE_male_treatment$Label <- NA
+rm(male_treatment_astrocytes_top10)
+
+FemaleAging_Astrocytes
+MaleAging_Astrocytes
+MaleTreatment_Astrocytes
+
+ggsave("Astrocytes - Female Aging.tiff", plot = FemaleAging_Astrocytes, 
+       units = "in", width = 5, height = 4, dpi = 300)
+ggsave("Astrocytes - Male Aging.tiff", plot = MaleAging_Astrocytes, 
+       units = "in", width = 5, height = 4, dpi = 300)
+ggsave("Astrocytes - Male Treatment.tiff", plot = MaleTreatment_Astrocytes, 
+       units = "in", width = 5, height = 4, dpi = 300)
+```
+Microglia below:
+```{r}
+female_aging_microglia_top10 <- head(arrange(DE_female_aging
+                                              [which(DE_female_aging$cell_type 
+                                              == "Microglia"), ], 
+                                              p_val_adj), 10) 
+DE_female_aging$Label <- if_else(DE_female_aging$gene %in% 
+                                female_aging_microglia_top10$gene, 
+                                DE_female_aging$gene, NA)
+FemaleAging_Microglia <- ggplot(data = DE_female_aging
+                      [which(DE_female_aging$cell_type == "Microglia"), ], 
+                      aes(x = avg_logFC, y = -log10(p_val_adj), 
+                          col = DiffExpressed, label = Label)) +
+  scale_color_manual(values=c("blue", "black", "red")) +
+  geom_vline(xintercept=c(-0.25, 0.25), col="red") +
+  geom_hline(yintercept=-log10(0.05), col="red") +
+  labs(x=expression(Log[2]~Fold~Change)) + 
+  labs(y=expression(-Log[10](p~Value))) + 
+  xlim(-10, 10) + ylim(0, 30) +
+  geom_point() +
+  geom_text_repel() +
+  ggtitle("Female - Microglia") +
+  theme_classic() +
+  theme(legend.position = "none")
+DE_female_aging$Label <- NA
+rm(female_aging_microglia_top10)
+
+male_aging_microglia_top10 <- head(arrange(DE_male_aging
+                                              [which(DE_male_aging$cell_type 
+                                              == "Microglia"), ], 
+                                              p_val_adj), 0) 
+DE_male_aging$Label <- if_else(DE_male_aging$gene %in% 
+                                male_aging_microglia_top10$gene, 
+                                DE_male_aging$gene, NA)
+MaleAging_Microglia <- ggplot(data = DE_male_aging
+                    [which(DE_male_aging$cell_type == "Microglia"), ], 
+                      aes(x = avg_logFC, y = -log10(p_val_adj), 
+                          col = DiffExpressed, label = Label)) +
+  scale_color_manual(values=c("black", "blue", "red")) +
+  geom_vline(xintercept=c(-0.25, 0.25), col="red") +
+  geom_hline(yintercept=-log10(0.05), col="red") +
+  labs(x=expression(Log[2]~Fold~Change)) + 
+  labs(y=expression(-Log[10](p~Value))) + 
+  xlim(-10, 10) + ylim(0, 30) +
+  geom_point() +
+  geom_text_repel() +
+  ggtitle("Male - Microglia") +
+  theme_classic() +
+  theme(legend.position = "none")
+DE_male_aging$Label <- NA
+rm(male_aging_microglia_top10)
+
+male_treatment_microglia_top10 <- head(arrange(DE_male_treatment
+                                              [which(DE_male_treatment$cell_type 
+                                              == "Microglia"), ], p_val_adj), 3) 
+DE_male_treatment$Label <- if_else(DE_male_treatment$gene %in% 
+                                male_treatment_microglia_top10$gene, 
+                                DE_male_treatment$gene, NA)
+MaleTreatment_Microglia <- ggplot(data = DE_male_treatment
+                    [which(DE_male_treatment$cell_type == "Microglia"), ], 
+                      aes(x = avg_logFC, y = -log10(p_val_adj), 
+                          col = DiffExpressed, label = Label)) +
+  scale_color_manual(values=c("blue", "black", "red")) +
+  geom_vline(xintercept=c(-0.25, 0.25), col="red") +
+  geom_hline(yintercept=-log10(0.05), col="red") +
+  labs(x=expression(Log[2]~Fold~Change)) + 
+  labs(y=expression(-Log[10](p~Value))) + 
+  xlim(-10, 10) + ylim(0, 5) +
+  geom_point() +
+  geom_text_repel() +
+  ggtitle("Male M. vaccae - Microglia") +
+  theme_classic() +
+  theme(legend.position = "none")
+DE_male_treatment$Label <- NA
+rm(male_treatment_microglia_top10)
+
+FemaleAging_Microglia
+MaleAging_Microglia
+MaleTreatment_Microglia
+
+ggsave("Microglia - Female Aging.tiff", plot = FemaleAging_Microglia, 
+       units = "in", width = 5, height = 4, dpi = 300)
+ggsave("Microglia - Male Aging.tiff", plot = MaleAging_Microglia, 
+       units = "in", width = 5, height = 4, dpi = 300)
+ggsave("Microglia - Male Treatment.tiff", plot = MaleTreatment_Microglia, 
+       units = "in", width = 5, height = 4, dpi = 300)
+```
+Oligodendrocytes below:
+```{r}
+female_aging_oligodendrocytes_top10 <- head(arrange(DE_female_aging
+                                              [which(DE_female_aging$cell_type 
+                                              == "Oligodendrocytes"), ], 
+                                              p_val_adj), 10) 
+DE_female_aging$Label <- if_else(DE_female_aging$gene %in% 
+                                female_aging_oligodendrocytes_top10$gene, 
+                                DE_female_aging$gene, NA)
+FemaleAging_Oligodendrocytes <- ggplot(data = DE_female_aging
+                      [which(DE_female_aging$cell_type == 
+                               "Oligodendrocytes"), ], 
+                      aes(x = avg_logFC, y = -log10(p_val_adj), 
+                          col = DiffExpressed, label = Label)) +
+  scale_color_manual(values=c("blue", "black", "red")) +
+  geom_vline(xintercept=c(-0.25, 0.25), col="red") +
+  geom_hline(yintercept=-log10(0.05), col="red") +
+  labs(x=expression(Log[2]~Fold~Change)) + 
+  labs(y=expression(-Log[10](p~Value))) + 
+  xlim(-8, 8) + ylim(0, 120) +
+  geom_point() +
+  geom_text_repel() +
+  ggtitle("Female - Oligodendrocytes") +
+  theme_classic() +
+  theme(legend.position = "none")
+DE_female_aging$Label <- NA
+rm(female_aging_oligodendrocytes_top10)
+
+male_aging_oligodendrocytes_top10 <- head(arrange(DE_male_aging
+                                              [which(DE_male_aging$cell_type 
+                                              == "Oligodendrocytes"), ], 
+                                              p_val_adj), 1) 
+DE_male_aging$Label <- if_else(DE_male_aging$gene %in% 
+                                male_aging_oligodendrocytes_top10$gene, 
+                                DE_male_aging$gene, NA)
+MaleAging_Oligodendrocytes <- ggplot(data = DE_male_aging
+                    [which(DE_male_aging$cell_type == "Oligodendrocytes"), ], 
+                      aes(x = avg_logFC, y = -log10(p_val_adj), 
+                          col = DiffExpressed, label = Label)) +
+  scale_color_manual(values=c("blue", "black", "red")) +
+  geom_vline(xintercept=c(-0.25, 0.25), col="red") +
+  geom_hline(yintercept=-log10(0.05), col="red") +
+  labs(x=expression(Log[2]~Fold~Change)) + 
+  labs(y=expression(-Log[10](p~Value))) + 
+  xlim(-8, 8) + ylim(0, 120) +
+  geom_point() +
+  geom_text_repel() +
+  ggtitle("Male - Oligodendrocytes") +
+  theme_classic() +
+  theme(legend.position = "none")
+DE_male_aging$Label <- NA
+rm(male_aging_oligodendrocytes_top10)
+
+male_treatment_oligodendrocytes_top10 <- head(arrange(DE_male_treatment
+                                              [which(DE_male_treatment$cell_type 
+                                              == "Oligodendrocytes"), ], 
+                                              p_val_adj), 1) 
+DE_male_treatment$Label <- if_else(DE_male_treatment$gene %in% 
+                                male_treatment_oligodendrocytes_top10$gene, 
+                                DE_male_treatment$gene, NA)
+MaleTreatment_Oligodendrocytes <- ggplot(data = DE_male_treatment
+                    [which(DE_male_treatment$cell_type == 
+                             "Oligodendrocytes"), ], 
+                      aes(x = avg_logFC, y = -log10(p_val_adj), 
+                          col = DiffExpressed, label = Label)) +
+  scale_color_manual(values=c("blue", "black", "red")) +
+  geom_vline(xintercept=c(-0.25, 0.25), col="red") +
+  geom_hline(yintercept=-log10(0.05), col="red") +
+  labs(x=expression(Log[2]~Fold~Change)) + 
+  labs(y=expression(-Log[10](p~Value))) + 
+  xlim(-8, 8) + ylim(0, 6) +
+  geom_point() +
+  geom_text_repel() +
+  ggtitle("Male M. vaccae - Oligodendrocytes") +
+  theme_classic() +
+  theme(legend.position = "none")
+DE_male_treatment$Label <- NA
+rm(male_treatment_oligodendrocytes_top10)
+
+FemaleAging_Oligodendrocytes
+MaleAging_Oligodendrocytes
+MaleTreatment_Oligodendrocytes
+
+ggsave("Oligodendrocytes - Female Aging.tiff", 
+       plot = FemaleAging_Oligodendrocytes, units = "in", width = 5, height = 4,
+       dpi = 300)
+ggsave("Oligodendrocytes - Male Aging.tiff", 
+       plot = MaleAging_Oligodendrocytes, units = "in", width = 5, height = 4,
+       dpi = 300)
+ggsave("Oligodendrocytes - Male Treatment.tiff", 
+       plot = MaleTreatment_Oligodendrocytes, units = "in", width = 5, 
+       height = 4, dpi = 300)
+```

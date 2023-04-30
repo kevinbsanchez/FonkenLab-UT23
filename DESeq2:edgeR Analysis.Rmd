@@ -1,0 +1,88 @@
+---
+title: "DESeq2/edgeR Analysis"
+output: html_notebook
+---
+This protocol is for executing DESeq2/edgeR after properly preparing the Seurat 
+object file (SOF). As a prerequisite, make sure that the cell types (e.g., 
+Cluster ID) and experimental groups are as a factor in the SOF. Example code is 
+listed below.
+```{r}
+aggr_seurat@meta.data$Cluster_ID <- as.factor(aggr_seurat@meta.data$Cluster_ID)
+aggr_seurat@meta.data$Groups <- as.factor(aggr_seurat@meta.data$Groups)
+```
+Make sure that the active identity is set to the experimental group column in 
+the metadata. Additionally, ensure that the replicate (i.e., animal ID)
+information is included in the metadata. 
+```{r}
+aggr_seurat <- SetIdent(aggr_seurat, value = aggr_seurat@meta.data$Groups)
+
+metadata <- read.csv("seurat_aggr_metadata.csv")
+Animal_ID <- metadata[1:165363,6]
+aggr_seurat$Replicates <- Animal_ID
+```
+If needed, you can extract the metadata file as a .csv to edit or input 
+additional information in column. This .csv file can then be imported into R to
+adjust the metadata from the SOF.
+```{r}
+write.csv(aggr_seurat@meta.data, "./seurat_metadata.csv")
+```
+Once the SOF is finalized, you can save it into an RDS or Rdata file.
+```{r}
+save(aggr_seurat, file = "Aging_Seurat.Rdata")
+saveRDS(aggr_seurat, file = "Aging_Seurat.RDS")
+```
+Next, install the Libra package, and subset the SOF to include the two groups
+you will use in your comparisons. Make sure that the control group is listed
+SECOND. Otherwise, the data will be "backwards." Alternatively, you can relevel
+the data using relevel() and ensuring that ref = "treatment group".
+``` {r}
+library(Libra)
+library(DESeq2)
+
+female_aging <- subset(aggr_seurat, idents = c("Female-AV", "Female-YV"))
+male_aging <- subset(aggr_seurat, idents = c("Male-AV", "Male-YV"))
+male_treatment <- subset(aggr_seurat, idents = c("Male-AM", "Male-AV"))
+ 
+DE_female_aging <- run_de(female_aging, cell_type = "Cluster_ID", label = 
+                            "Groups", replicate = "Replicates", de_family = 
+                            'pseudobulk', de_method = 'edgeR', de_type = 'LRT')
+
+DE_male_aging <- run_de(male_aging, cell_type = "Cluster_ID", label = "Groups",
+                          replicate = "Replicates", de_family = 'pseudobulk',
+                          de_method = 'edgeR', de_type = 'LRT')
+
+DE_male_treatment <- run_de(male_treatment, cell_type = "Cluster_ID", label = 
+                              "Groups", replicate = "Replicates", de_family = 
+                              'pseudobulk', de_method = 'edgeR', de_type = 
+                              'LRT')
+
+write.csv(DE_female_aging, "DE Female Aging edgeR.csv", row.names = FALSE, 
+          quote = FALSE)
+write.csv(DE_male_aging, "DE Male Aging edgeR.csv", row.names = FALSE, 
+          quote = FALSE)
+write.csv(DE_male_treatment, "DE Male Treatment edgeR.csv", row.names = FALSE, 
+          quote = FALSE)
+```
+Below is some additional information regarding SOFs and miscellaneous analyses
+that can be performed after retrieving the differential expression data. 
+```{r}
+Idents(aggr_seurat) # This tells you the levels of the active identity.
+
+table(aggr_seurat@meta.data$Groups,aggr_seurat@meta.data$Cluster_ID)
+# This shows you a table of nuclei counts per cell type and experimental group.
+
+DE_female_aging_sig <- DE_female_aging[which(DE_female_aging$p_val_adj 
+                                             < 0.05), ] 
+# This subsets the data to show only significant DEGs.
+
+table(DE_female_aging_sig$cell_type)
+# This shows you the number of significant DEGs per cell type.
+
+DE_female_aging_gene_freq <- as.data.frame(table(DE_female_aging_sig$gene))
+# This shows you the DEGs most commonly affected across cell types.
+
+library(hdWGCNA)
+# This package can be used to run weighted correlation network analysis. Note
+# that this analysis is computationally intensive and should ideally be done 
+# via the GSAF core/POD R server. 
+```
