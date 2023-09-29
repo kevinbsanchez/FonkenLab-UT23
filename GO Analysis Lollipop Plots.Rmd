@@ -1,0 +1,19 @@
+---
+title: "GO Analysis Lollipop Plots"
+output: html_document
+---
+After creating volcano plots, you can run gene enrichment analysis using online
+tools like PANTHER and ShinyGO or via paid applications like QIAGEN Ingenuity 
+IPA.
+```{r}
+F_Bulk_Graph <- ggplot(F_Bulk, aes(x = Fold_Enrichment, y = reorder(Pathway_Name, -FDR))) +
+  geom_segment(aes(x = 0, xend = Fold_Enrichment, y = reorder(Pathway_Name, -FDR), yend = reorder( Pathway_Name, -FDR)), color = "skyblue") + 
+  geom_point(color = "blue", size = 4) + theme_light() + 
+  theme(
+    panel.grid.major.y = element_blank(),
+    axis.text = element_text(size = 12),
+    panel.border = element_blank(),
+    axis.ticks.y = element_blank()
+  ) + xlab("Fold Enrichment") + ylab("") + xlim(0, 20)
+F_Bulk_Graph
+```
